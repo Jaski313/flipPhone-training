@@ -24,8 +24,13 @@ MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 # Comment out or remove entries to exclude them.
 SELECTED_TRICKS = [
     "Kickflip",
-    "Treflip",
+    "Heelflip",
     "FS Shuvit",
+    "FS 360 Shuvit",
+    "BS Shuvit",
+    "BS 360 Shuvit",
+    "Treflip",
+    #"Late Kickflip",
 ]
 
 
@@ -127,7 +132,7 @@ def main():
     y_pred = clf.predict(X_test)
 
     print("\n── Classification Report (Test Set) ──")
-    print(classification_report(y_test, y_pred, target_names=le.classes_))
+    print(classification_report(y_test, y_pred, labels=range(len(le.classes_)), target_names=le.classes_))
 
     print("── Confusion Matrix (Test Set) ──")
     cm = confusion_matrix(y_test, y_pred)
