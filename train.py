@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "dataset.csv")
@@ -61,7 +61,7 @@ def extract_features(group: pd.DataFrame) -> dict:
 
     # Integrated rotation per axis (total angle in radians)
     for axis in ["gx", "gy", "gz"]:
-        features[f"{axis}_total_angle"] = np.trapz(group[axis], group["t"] / 1000.0)
+        features[f"{axis}_total_angle"] = np.trapezoid(group[axis], group["t"] / 1000.0)
 
     # Duration
     features["duration_s"] = (group["t"].iloc[-1] - group["t"].iloc[0]) / 1000.0
@@ -115,23 +115,22 @@ def main():
 
     print(f"  {X.shape[0]} recordings, {X.shape[1]} features, {len(le.classes_)} classes")
 
-    # Stratified k-fold cross-validation
-    n_splits = min(5, min(np.bincount(y)))
-    if n_splits < 2:
-        print("\nNot enough data per class for cross-validation. Need at least 2 per trick.")
-        print("Collect more data and try again.")
-        return
+    # 80/20 train/test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y,
+    )
+    print(f"\n  Train: {len(X_train)}, Test: {len(X_test)}")
 
-    print(f"\nTraining Random Forest ({n_splits}-fold CV) …")
+    print("\nTraining Random Forest …")
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-    y_pred = cross_val_predict(clf, X, y, cv=cv)
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
 
-    print("\n── Classification Report ──")
-    print(classification_report(y, y_pred, target_names=le.classes_))
+    print("\n── Classification Report (Test Set) ──")
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
 
-    print("── Confusion Matrix ──")
-    cm = confusion_matrix(y, y_pred)
+    print("── Confusion Matrix (Test Set) ──")
+    cm = confusion_matrix(y_test, y_pred)
     # Pretty print
     max_name = max(len(n) for n in le.classes_)
     header = " " * (max_name + 2) + "  ".join(f"{n[:6]:>6}" for n in le.classes_)
@@ -141,11 +140,13 @@ def main():
         print(f"{le.classes_[i]:>{max_name}}  {row_str}")
 
     # Feature importance
-    clf.fit(X, y)
     importances = sorted(zip(feature_cols, clf.feature_importances_), key=lambda x: -x[1])
     print("\n── Top 10 Features ──")
     for name, imp in importances[:10]:
         print(f"  {name:<25} {imp:.4f}")
+
+    # Retrain on all data for the exported model
+    clf.fit(X, y)
 
     # Save model
     os.makedirs(MODEL_DIR, exist_ok=True)
