@@ -15,7 +15,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/flipphone-training
+            set -e
+            cd /opt/flipPhone-training
             git pull origin main
             source .venv/bin/activate
             pip install -r requirements.txt --quiet
