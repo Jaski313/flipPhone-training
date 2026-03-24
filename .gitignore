@@ -8,7 +8,6 @@ __pycache__/
 venv/
 
 # Models
-models/*.pkl
 models/*.joblib
 
 # Jupyter
