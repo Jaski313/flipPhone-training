@@ -144,6 +144,24 @@ def main():
         row_str = "  ".join(f"{v:>6}" for v in row)
         print(f"{le.classes_[i]:>{max_name}}  {row_str}")
 
+    # Show misclassified recordings
+    test_ids = feat_df["id"].values[
+        train_test_split(
+            range(len(y)), test_size=0.2, random_state=42, stratify=y,
+        )[1]
+    ]
+    rec_meta = df.groupby("id").first()[["collector", "timestamp"]]
+    misclassified = y_test != y_pred
+    if misclassified.any():
+        print("\n── Misclassified Recordings ──")
+        for idx in np.where(misclassified)[0]:
+            true_label = le.classes_[y_test[idx]]
+            pred_label = le.classes_[y_pred[idx]]
+            rec_id = test_ids[idx]
+            meta = rec_meta.loc[rec_id]
+            ts = pd.to_datetime(meta["timestamp"]).strftime("%Y-%m-%d %H:%M")
+            print(f"  {rec_id}: true={true_label}, predicted={pred_label} (by {meta['collector']}, {ts})")
+
     # Feature importance
     importances = sorted(zip(feature_cols, clf.feature_importances_), key=lambda x: -x[1])
     print("\n── Top 10 Features ──")
