@@ -16,7 +16,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 def fetch(server_url: str, api_key: str) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
-    url = f"{server_url.rstrip('/')}/api/export/csv?api_key={api_key}"
+    url = f"{server_url.rstrip('/')}/admin/api/export/csv?api_key={api_key}"
 
     print(f"Fetching dataset from {server_url} …")
     resp = requests.get(url, timeout=30)

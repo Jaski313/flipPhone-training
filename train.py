@@ -33,6 +33,14 @@ SELECTED_TRICKS = [
     #"Late Kickflip",
 ]
 
+# ── Collector filter ─────────────────────────────────────────────────
+# Only recordings from these collectors will be used.
+# Set to None (or empty list) to include all collectors.
+#SELECTED_COLLECTORS = None
+SELECTED_COLLECTORS = [
+     "jannes",
+ ]
+
 
 # ── Feature extraction ──────────────────────────────────────────────
 
@@ -77,43 +85,68 @@ def extract_features(group: pd.DataFrame) -> dict:
     return features
 
 
-# ── Main ─────────────────────────────────────────────────────────────
+# ── Shared data loading ───────────────────────────────────────────────
 
 
-def main():
-    if not os.path.exists(DATA_PATH):
-        print("No dataset found. Run fetch_data.py first.")
-        return
+def load_features(
+    data_path: str = DATA_PATH,
+    selected_tricks: list | None = None,
+    selected_collectors: list | None = None,
+) -> tuple:
+    """Load CSV, filter, extract features. Returns (feat_df, feature_cols)."""
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"No dataset found at {data_path}. Run fetch_data.py first.")
 
-    print("Loading data …")
-    df = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(data_path)
 
-    # Filter to selected tricks
-    df = df[df["trick"].isin(SELECTED_TRICKS)]
-    if df.empty:
-        print(f"No data found for selected tricks: {SELECTED_TRICKS}")
-        return
-    print(f"  {len(df)} sample rows, {df['id'].nunique()} recordings, {df['trick'].nunique()} tricks")
-    print(f"  Selected tricks: {SELECTED_TRICKS}")
+    if selected_tricks:
+        df = df[df["trick"].isin(selected_tricks)]
+        if df.empty:
+            raise ValueError(f"No data found for selected tricks: {selected_tricks}")
 
-    # Show class distribution
-    trick_counts = df.groupby("trick")["id"].nunique()
-    print("\nRecordings per trick:")
-    for trick, count in trick_counts.items():
-        print(f"  {trick}: {count}")
+    if selected_collectors:
+        df = df[df["collector"].isin(selected_collectors)]
+        if df.empty:
+            raise ValueError(f"No data found for selected collectors: {selected_collectors}")
 
-    # Extract features per recording
-    print("\nExtracting features …")
     records = []
     for rec_id, group in df.groupby("id"):
         feats = extract_features(group)
         feats["id"] = rec_id
         feats["trick"] = group["trick"].iloc[0]
+        feats["collector"] = group["collector"].iloc[0]
+        feats["timestamp"] = group["timestamp"].iloc[0]
         records.append(feats)
 
     feat_df = pd.DataFrame(records)
-    feature_cols = [c for c in feat_df.columns if c not in ("id", "trick")]
+    feature_cols = [c for c in feat_df.columns if c not in ("id", "trick", "collector", "timestamp")]
+    return feat_df, feature_cols
 
+
+# ── Main ─────────────────────────────────────────────────────────────
+
+
+def main():
+    print("Loading data …")
+    try:
+        feat_df, feature_cols = load_features(
+            selected_tricks=SELECTED_TRICKS,
+            selected_collectors=SELECTED_COLLECTORS,
+        )
+    except (FileNotFoundError, ValueError) as e:
+        print(e)
+        return
+
+    print(f"  {feat_df['trick'].value_counts().sum()} recordings, {feat_df['trick'].nunique()} tricks")
+    print(f"  Selected tricks: {SELECTED_TRICKS}")
+    if SELECTED_COLLECTORS:
+        print(f"  Selected collectors: {SELECTED_COLLECTORS}")
+
+    print("\nRecordings per trick:")
+    for trick, count in feat_df["trick"].value_counts().items():
+        print(f"  {trick}: {count}")
+
+    print("\nExtracting features …")
     X = feat_df[feature_cols].values
     le = LabelEncoder()
     y = le.fit_transform(feat_df["trick"])
@@ -150,7 +183,7 @@ def main():
             range(len(y)), test_size=0.2, random_state=42, stratify=y,
         )[1]
     ]
-    rec_meta = df.groupby("id").first()[["collector", "timestamp"]]
+    rec_meta = feat_df.set_index("id")[["collector", "timestamp"]]
     misclassified = y_test != y_pred
     if misclassified.any():
         print("\n── Misclassified Recordings ──")
