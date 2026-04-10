@@ -36,13 +36,13 @@ SELECTED_TRICKS = [
     "BS Shuvit",
     "BS 360 Shuvit",
     "Treflip",
-    "Double Heelflip",
-    "Double Kickflip",
-    "FS 540 Shuvit",
-    "BS 540 Shuvit",
-    "FS 720 Shuvit",
-    "BS 720 Shuvit",
-    "Late Kickflip",
+    #"Double Heelflip",
+    #"Double Kickflip",
+    #"FS 540 Shuvit",
+    #"BS 540 Shuvit",
+    #"FS 720 Shuvit",
+    #"BS 720 Shuvit",
+    #"Late Kickflip",
 ]
 
 # ── Collector filter ─────────────────────────────────────────────────
